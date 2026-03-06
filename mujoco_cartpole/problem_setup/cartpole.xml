@@ -1,0 +1,94 @@
+<mujoco model="cartpole">
+
+  <!--
+    GLOBAL PHYSICS SETTINGS
+    - timestep: simulation dt (physics integration step)
+    - gravity: sets the "down" direction and magnitude
+  -->
+  <option timestep="0.002" gravity="0 0 -9.81"/>
+
+  <worldbody>
+
+    <!-- Lighting: main light from above-front, fill from the side -->
+    <light name="main" pos="0 0 4" dir="0 0 -1" directional="true" diffuse="1 1 1" specular="0.4 0.4 0.4"/>
+    <light name="fill" pos="-2 2 3" dir="0.3 -0.3 -1" directional="true" diffuse="0.5 0.5 0.5" specular="0.1 0.1 0.1"/>
+
+    <!--
+      WORLD / GROUND
+      Light gray plane plus dark stripes along x so cart sliding is easy to see.
+    -->
+    <geom type="plane" size="5 5 0.1" rgba="0.92 0.92 0.95 1"/>
+
+    <!-- Dark floor stripes (perpendicular to cart motion) so motion is visible -->
+    <geom name="stripe_m2" type="box" pos="-2 0 0.051" size="0.22 5 0.008" rgba="0.45 0.45 0.5 1" contype="0" conaffinity="0"/>
+    <geom name="stripe_m1_5" type="box" pos="-1.5 0 0.051" size="0.22 5 0.008" rgba="0.45 0.45 0.5 1" contype="0" conaffinity="0"/>
+    <geom name="stripe_m1" type="box" pos="-1 0 0.051" size="0.22 5 0.008" rgba="0.45 0.45 0.5 1" contype="0" conaffinity="0"/>
+    <geom name="stripe_m0_5" type="box" pos="-0.5 0 0.051" size="0.22 5 0.008" rgba="0.45 0.45 0.5 1" contype="0" conaffinity="0"/>
+    <geom name="stripe_0" type="box" pos="0 0 0.051" size="0.22 5 0.008" rgba="0.45 0.45 0.5 1" contype="0" conaffinity="0"/>
+    <geom name="stripe_0_5" type="box" pos="0.5 0 0.051" size="0.22 5 0.008" rgba="0.45 0.45 0.5 1" contype="0" conaffinity="0"/>
+    <geom name="stripe_1" type="box" pos="1 0 0.051" size="0.22 5 0.008" rgba="0.45 0.45 0.5 1" contype="0" conaffinity="0"/>
+    <geom name="stripe_1_5" type="box" pos="1.5 0 0.051" size="0.22 5 0.008" rgba="0.45 0.45 0.5 1" contype="0" conaffinity="0"/>
+    <geom name="stripe_2" type="box" pos="2 0 0.051" size="0.22 5 0.008" rgba="0.45 0.45 0.5 1" contype="0" conaffinity="0"/>
+
+    <!--
+      CART BODY
+      This is the rigid cart object.
+      In problem framing, the cart has position x and velocity ẋ.
+      Those come from this slide joint below.
+    -->
+    <body name="cart" pos="0 0 0.1">
+
+      <!--
+        CART DOF: SLIDE JOINT
+        This creates the horizontal degree of freedom (x).
+        - axis="1 0 0" means motion along +x
+        - range limits how far the cart can slide
+      -->
+      <joint name="slide" type="slide" axis="1 0 0" range="-2 2"/>
+
+      <!--
+        CART GEOMETRY
+        A box shape so we can see the cart in the viewer.
+      -->
+      <geom type="box" size="0.15 0.10 0.05" rgba="0.25 0.45 0.85 1"/>
+
+      <!--
+        POLE BODY (attached to cart)
+        The pole is a child body of the cart, meaning it moves with the cart.
+      -->
+      <body name="pole" pos="0 0 0.05">
+
+        <!--
+          POLE DOF: HINGE JOINT
+          This creates the pole angle θ and angular velocity θ̇.
+          - axis="0 1 0" means it rotates about the y-axis
+          - with gravity, this rotation produces the falling dynamics we want
+        -->
+        <joint name="hinge" type="hinge" axis="0 1 0"/>
+
+        <!--
+          POLE GEOMETRY
+          Capsule from (0,0,0) to (0,0,0.6).
+          This gives the pole a visible shape and a lever arm.
+        -->
+        <geom type="capsule" fromto="0 0 0 0 0 0.6" size="0.03" rgba="0.85 0.25 0.25 1"/>
+
+      </body>
+    </body>
+  </worldbody>
+
+  <!--
+    ACTUATOR = AGENT CONTROL AUTHORITY
+    This is the key mapping from problem framing to code.
+
+    In problem framing we said:
+      "The agent controls a horizontal force applied to the cart."
+
+    Here we implement that by attaching a motor to the cart's slide joint.
+    - ctrlrange bounds the control input (action limits)
+  -->
+  <actuator>
+    <motor name="cart_motor" joint="slide" ctrlrange="-10 10"/>
+  </actuator>
+
+</mujoco>

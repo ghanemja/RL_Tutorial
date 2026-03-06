@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Reward Hacking Demonstration</title>
+  <style>
+    :root {
+      --ink: #000000;
+      --muted: #525252;
+      --bg0: #f5f5f5;
+      --bg1: rgba(37, 99, 235, 0.12);
+      --bg2: rgba(59, 130, 246, 0.12);
+      --card: #ffffff;
+      --border: #d4d4d4;
+      --accent: #2563eb;
+      --accent-ghost: rgba(37, 99, 235, 0.15);
+      --radius: 16px;
+      --shadow: 0 10px 30px rgba(2, 6, 23, 0.12);
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Courier New", monospace;
+      --sans: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      font-family: var(--sans);
+      font-size: 17px;
+      line-height: 1.65;
+      color: var(--ink);
+      background:
+        radial-gradient(900px 600px at 5% -10%, var(--bg1), transparent 70%),
+        radial-gradient(1200px 700px at 110% 10%, var(--bg2), transparent 70%),
+        var(--bg0);
+    }
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      backdrop-filter: blur(8px);
+      background: rgba(255,255,255,.9);
+      border-bottom: 1px solid var(--border);
+    }
+    .head-inner { width: 96vw; max-width: 1800px; margin: 0 auto; padding: 14px 1.5vw; }
+    .title { font-weight: 800; color: var(--accent); font-size: 20px; }
+    .grid { width: 96vw; max-width: 1800px; margin: 0 auto; padding: 0 1.5vw; }
+    nav {
+      position: sticky;
+      top: 52px;
+      z-index: 9;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      gap: 8px 4px;
+      background: rgba(255,255,255,.95);
+      border-bottom: 1px solid var(--border);
+      padding: 12px 0 14px;
+      margin-bottom: 24px;
+      box-shadow: 0 2px 8px rgba(2, 6, 23, 0.06);
+    }
+    nav a {
+      display: inline-block;
+      padding: 8px 14px;
+      text-decoration: none;
+      color: var(--ink);
+      border-radius: 10px;
+      white-space: nowrap;
+    }
+    nav a:hover { background: var(--accent-ghost); color: var(--accent); }
+    .card {
+      background: var(--card);
+      border: 0.5px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      margin-top: 32px;
+      overflow: hidden;
+      padding: 32px 40px;
+    }
+    .card:first-child { margin-top: 0; }
+    .card h2 {
+      margin-top: 0;
+      padding: 16px 0;
+      border-bottom: 1px solid var(--accent);
+      font-weight: 700;
+      color: var(--accent);
+    }
+    h1 { color: var(--accent); font-size: 28px; margin-top: 0; }
+    h3 { font-size: 17px; margin-top: 24px; color: var(--ink); }
+    pre, code { font-family: var(--mono); font-size: 14px; background: #f8fafc; padding: 2px 6px; border-radius: 4px; }
+    pre {
+      font-family: var(--mono);
+      background: #f8fafc;
+      border: 0.5px solid #e2e8f0;
+      padding: 14px;
+      border-radius: 12px;
+      overflow: auto;
+      margin-top: 14px;
+      font-size: 14px;
+      white-space: pre-wrap;
+    }
+    .diagram { background: #f0f4ff; padding: 16px; border-radius: 12px; margin: 16px 0; text-align: center; font-family: var(--mono); }
+    ul { margin: 8px 0; }
+    table { border-collapse: collapse; width: 100%; margin: 16px 0; }
+    th, td { border: 1px solid var(--border); padding: 10px 14px; text-align: left; }
+    th { background: #f8fafc; font-weight: 600; }
+    .btn-box { margin: 12px 0; padding: 14px; background: #f8fafc; border-radius: 12px; border: 0.5px solid var(--border); }
+    .btn-box code { display: block; margin-top: 8px; }
+    .step { margin: 16px 0; padding-left: 20px; border-left: 3px solid var(--accent); }
+    .plot-crop-wrapper { width: 100%; max-width: 380px; margin: 12px 0; overflow: hidden; border-radius: 12px; border: 0.5px solid var(--border); box-shadow: var(--shadow); }
+    .plot-crop-wrapper img { display: block; width: 300%; max-width: none; height: auto; }
+    .plot-crop-wrapper.crop-bad img { margin-left: 0; }
+    .plot-crop-wrapper.crop-misleading img { margin-left: -100%; }
+    .plot-crop-wrapper.crop-correct img { margin-left: -200%; }
+    .reward-video { max-width: 100%; border-radius: 12px; border: 0.5px solid var(--border); box-shadow: var(--shadow); margin: 12px 0; }
+    .fig-caption { font-size: 14px; color: var(--muted); margin-top: 6px; margin-bottom: 16px; }
+    @media (max-width: 780px) { nav { flex-wrap: wrap; } nav a { font-size: 14px; padding: 6px 10px; } }
+  </style>
+</head>
+<body>
+<header>
+  <div class="head-inner">
+    <div class="title">RL Tutorial</div>
+  </div>
+</header>
+<div class="grid">
+  <main>
+    <nav>
+      <a href="#steps">Step-by-step directions</a>
+      <a href="#what-is">1. What Is Reward Hacking?</a>
+      <a href="#bad">2. Bad Reward</a>
+      <a href="#misleading">3. Misleading Reward</a>
+      <a href="#correct">4. Correct Reward</a>
+      <a href="#comparison">5. Interactive Comparison</a>
+      <a href="#sidebyside">6. Side-by-Side Comparison</a>
+      <a href="#plot-results">Interpreting the plot</a>
+      <a href="#why">7. Why This Happens</a>
+      <a href="#lessons">8. Key Lessons</a>
+      <a href="#exercise">9. Exercise</a>
+    </nav>
+
+    <section class="card" id="steps">
+      <p>Different reward functions lead to completely different behavior. Same environment, same PPO: only the reward changes.</p>
+
+      <h2>Step-by-step directions</h2>
+      <p>Run these in order. All commands from <code>mujoco_cartpole/</code>. Outputs go to <code>results/reward_hacking/</code>.</p>
+      <ol>
+        <li class="step">
+Go to the project folder and activate the venv.          <pre>cd mujoco_cartpole
+source .venv/bin/activate</pre>
+        </li>
+        <li class="step">
+Install RL dependencies (if you haven’t already).
+          <pre>pip install -r requirements_rl.txt</pre>
+        </li>
+        <li class="step">
+Train all three reward types. This runs PPO with bad, misleading, and correct rewards and saves <code>results/reward_hacking/model_bad.zip</code>, <code>results/reward_hacking/model_misleading.zip</code>, and <code>results/reward_hacking/model_correct.zip</code>.
+          <pre>python -m reward_hacking.reward_hacking_demo --train all</pre>
+          This may take a few minutes (about 80k timesteps per reward type).
+        </li>
+        <li class="step">
+(Optional) Generate the comparison plot.          <pre>python -m reward_hacking.reward_hacking_demo --plot</pre>
+          This creates <code>results/reward_hacking/reward_hacking_comparison.png</code> in the <code>results/</code> folder.
+        </li>
+        <li class="step">
+Play each policy in the viewer. Run one command at a time; close the viewer when done, then run the next.
+          <pre>python -m reward_hacking.reward_hacking_demo --play bad</pre>
+          Observe: pole unstable or failing. Then:
+          <pre>python -m reward_hacking.reward_hacking_demo --play misleading</pre>
+          Observe: cart slamming, pole not balanced. Then:
+          <pre>python -m reward_hacking.reward_hacking_demo --play correct</pre>
+          Observe: stable balancing, smooth control.
+        </li>
+        <li class="step">
+(Optional) Run all three policies side by side. Opens three MuJoCo viewers (bad | misleading | correct) in sync. Press <code>R</code> to reset all, <code>P</code> to pause, <code>S</code> to single-step.
+          <pre>python -m reward_hacking.compare_policies</pre>
+        </li>
+      </ol>
+      <p style="margin-top: 20px;">After this you’ll have seen how the same environment and algorithm produce completely different behavior when only the reward function changes. For more detail on each reward, see the sections below. For the main RL tutorial, see <a href="../training/tutorial.html">training/tutorial.html</a>.</p>
+    </section>
+
+    <section class="card" id="what-is">
+      <h2>1. What Is Reward Hacking?</h2>
+      <p>RL agents maximize reward, not what you intended. If the reward doesn't match what you want, they'll find the easiest way to get high reward, often by exploiting shortcuts. That is essentially reward hacking.</p>
+      <p>Reward design is critical. The reward has to encode what you want and avoid rewarding the wrong thing. This demo lets you switch between three rewards and see how behavior changes.</p>
+    </section>
+
+    <section class="card" id="bad">
+      <h2>2. Bad Reward</h2>
+      <p>Here the reward depends only on the pole angle:</p>
+      <pre>reward = -abs(pole_angle)</pre>
+      <p>No signal for keeping the cart centered or for smooth control. The agent gets no guidance on how to move the cart, so it often learns unstable behavior or fails to balance.</p>
+      <p>Expected behavior: Agent struggles to balance; may oscillate or collapse quickly.</p>
+      <p>Video: Behavior of the policy trained with the bad reward (unstable or failing to balance):</p>
+      <figure>
+        <video src="./demo_videos/bad.mov" controls class="reward-video" preload="metadata">Your browser does not support the video tag.</video>
+        <figcaption class="fig-caption">Bad reward policy: pole oscillates or collapses.</figcaption>
+      </figure>
+      <p>The plot below shows only the bad reward column from the full comparison. Episode reward stays negative and noisy and you can see that the agent never gets a clear signal to improve.</p>
+      <div class="plot-crop-wrapper crop-bad">
+        <img src="../results/reward_hacking/reward_hacking_comparison.png" alt="Bad reward: episode reward and length (cropped from full comparison)" />
+      </div>
+    </section>
+
+    <section class="card" id="misleading">
+      <h2>3. Misleading Reward</h2>
+      <p>Here we reward cart velocity:</p>
+      <pre>reward = cart_velocity</pre>
+      <p>Maximizing velocity encourages the agent to move the cart as fast as possible. The pole is ignored. The agent learns to slam the cart back and forth instead of balancing.</p>
+      <p>Expected behavior: Agent moves the cart aggressively; pole is not balanced.</p>
+      <p>Video: Behavior of the policy trained with the misleading reward (cart slamming, pole not balanced):</p>
+      <figure>
+        <video src="./demo_videos/misleading.mov" controls class="reward-video" preload="metadata">Your browser does not support the video tag.</video>
+        <figcaption class="fig-caption">Misleading reward policy: cart slamming to maximize velocity.</figcaption>
+      </figure>
+      <p>Why it’s misleading: The plot below shows only the misleading reward column. Episode reward <em>increases</em> over training, so at first glance it looks like success, but the reward components show the agent is maximizing cart velocity, not balancing the pole. That’s reward hacking.</p>
+      <div class="plot-crop-wrapper crop-misleading">
+        <img src="../results/reward_hacking/reward_hacking_comparison.png" alt="Misleading reward: episode reward and length (cropped from full comparison)" />
+      </div>
+    </section>
+
+    <section class="card" id="correct">
+      <h2>4. Correct Reward</h2>
+      <p>We use reward shaping with several components:</p>
+      <pre>reward = upright_bonus + center_bonus - velocity_penalty - control_penalty</pre>
+      <p>Where:</p>
+      <ul>
+        <li>upright_bonus = cos(pole_angle): pole upright is better</li>
+        <li>center_bonus = cart near center is better</li>
+        <li>velocity_penalty = discourages fast, jerky motion</li>
+        <li>control_penalty = discourages large forces</li>
+      </ul>
+      <p>That makes it clear what we want: balance the pole, keep the cart centered, act smoothly. The agent learns stable balancing.</p>
+
+      <h3>How we chose each component</h3>
+      <p>Each term encodes a specific goal and is designed to give a smooth, differentiable signal:</p>
+      <ul>
+        <li>upright_bonus = cos(pole_angle) :  We use cosine instead of −|angle| because cos(0)=1 (best) and cos(π)=−1 (worst). It's smooth everywhere, so the agent gets a clear gradient toward upright. The bad reward used −|angle|, which has a kink at zero and no gradient for cart motion.</li>
+        <li>center_bonus = 1 − 0.5·|cart_x|/2 :  Cart position is in [−2, 2] (track limits). At center (x=0) the bonus is 1; at the edges it drops. The 0.5 factor keeps this term smaller than the upright bonus so balancing stays the main objective.</li>
+        <li>velocity_penalty = cart_vel² + 0.1·pole_angular_vel² :  Squared terms penalize fast motion without favoring a direction. We weight pole angular velocity by 0.1 because cart velocity usually dominates; we want to discourage jerky cart motion first.</li>
+        <li>control_penalty = action² :  Action is the force applied. Squaring penalizes large forces and encourages minimal control effort.</li>
+      </ul>
+
+      <h3>How we combine them</h3>
+      <p>We add bonuses and subtract penalties. The total is:</p>
+      <pre>total = w_balance·balance + w_upright·upright + w_center·center
+       − w_velocity·velocity_penalty − w_control·control_penalty</pre>
+      <p>Default weights: <code>w_balance=1</code>, <code>w_upright=1</code>, <code>w_center=0.5</code>, <code>w_velocity=0.01</code>, <code>w_control=0.001</code>. Balance and upright are the main drivers; center nudges the cart toward the middle. Penalties use small weights so they shape behavior without overwhelming the primary reward: if penalties were too large, the agent would learn to stand still instead of balancing.</p>
+
+      <h3>Why these penalty weights?</h3>
+      <p>Velocity and control penalties are scaled down (0.01 and 0.001) because their raw values can be large (e.g. cart_vel² can reach tens or hundreds). If we didn't scale them, the agent would over-optimize for "don't move" and never learn to balance. The weights were tuned so that: (1) balancing remains the dominant objective, and (2) the agent still gets a noticeable signal to reduce thrashing. You can experiment with different weights in <code>reward_dashboard.py</code>.</p>
+      <figure>
+          <video src="./demo_videos/correct.mov" controls class="reward-video" preload="metadata">Your browser does not support the video tag.</video>
+          <figcaption class="fig-caption">Correct reward policy, stable pole balancing.</figcaption>
+        </figure>
+    </section>
+
+    <section class="card" id="comparison">
+      <h2>5. Interactive Behavior Comparison</h2>
+      <p>Run each policy in the viewer to compare. First train (if you haven't):</p>
+      <pre>cd mujoco_cartpole
+python -m reward_hacking.reward_hacking_demo --train all</pre>
+      <p>Then run one of the policies in the viewer:</p>
+      <div class="btn-box">
+Run Bad Reward Policy        <code>python -m reward_hacking.reward_hacking_demo --play bad</code>
+      </div>
+      <div class="btn-box">
+Run Misleading Reward Policy        <code>python -m reward_hacking.reward_hacking_demo --play misleading</code>
+      </div>
+      <div class="btn-box">
+Run Correct Reward Policy        <code>python -m reward_hacking.reward_hacking_demo --play correct</code>
+      </div>
+      <p>Observe: bad reward → unstable or failing; misleading → cart slamming; correct → stable balancing.</p>
+    </section>
+
+    <section class="card" id="sidebyside">
+      <h2>6. Side-by-Side Policy Comparison</h2>
+      <p>Run all three trained policies simultaneously in three MuJoCo viewers to compare behavior in real time:</p>
+      <pre>cd mujoco_cartpole
+python -m reward_hacking.compare_policies</pre>
+      <p>This launches three environments side by side (left, center, right):</p>
+      <ul>
+        <li>LEFT: Bad reward policy</li>
+        <li>CENTER: Misleading reward policy</li>
+        <li>RIGHT: Correct reward policy</li>
+      </ul>
+      <p>Each viewer uses the same <code>cartpole.xml</code>; only the learned policy differs. The simulation loop is synchronized: at each timestep, each policy chooses an action, all environments step, then all viewers render. The console shows current reward and episode step for each, and for the correct-reward case it also shows reward components (balance, center, velocity_penalty, control_penalty).</p>
+      <p>Keyboard: <code>R</code> = reset all environments; <code>P</code> = pause; <code>S</code> = single step.</p>
+      <p>What you'll see:</p>
+      <ul>
+        <li>Bad: pole wobbles or falls: no clear signal for how to move the cart.</li>
+        <li>Misleading: cart goes wild. The agent figured out that moving fast = more reward, so it ignores the pole.</li>
+        <li>Correct: pole stays up, cart hovers near center, smooth corrections.</li>
+      </ul>
+      <div class="diagram">
+Why each behavior emerges<br/>
+        Bad: reward = −|angle| → no guidance on cart → policy never gets a clear gradient toward balancing.<br/>
+        Misleading: reward = velocity → policy optimizes velocity → cart slamming, pole ignored.<br/>
+        Correct: reward = upright + center − penalties → policy optimizes balance and smoothness → stable behavior.
+      </div>
+      <h3>Flow diagram: reward → optimization → strategy</h3>
+      <div class="diagram">
+        Reward Function  →  Policy Optimization (PPO)  →  Learned Strategy<br/>
+        (what you define)     (agent maximizes reward)      (what the agent actually does)
+      </div>
+      <p>Agents optimize the reward exactly. Flawed reward, flawed behavior. Seeing all three side by side makes that obvious.</p>
+    </section>
+
+    <section class="card" id="plot-results">
+      <h2>Interpreting the comparison plot</h2>
+      <p>Run <code>python -m reward_hacking.reward_hacking_demo --plot</code> to generate the comparison. Here's how to read it.</p>
+      <figure style="margin: 20px 0;">
+        <img src="../results/reward_hacking/reward_hacking_comparison.png" alt="Reward hacking: episode reward and length by reward type (bad, misleading, correct)" style="max-width: 100%; height: auto; border-radius: 8px; border: 1px solid var(--border);" />
+        <figcaption class="fig-caption" style="font-size: 14px; color: var(--muted); margin-top: 8px;">results/reward_hacking/reward_hacking_comparison.png: episode reward and reward components for bad, misleading, and correct rewards.</figcaption>
+      </figure>
+      <p>Three rewards, three completely different behaviors. Here's what each shows.</p>
+
+      <h3>1. Bad reward</h3>
+      <p>Reward stays negative and noisy. The smoothed line ticks up a bit at the end, but the agent never gets to a stable high. The signal just doesn't point it toward balancing.</p>
+      <p>Episode length hovers around 50 steps. Look at the components: they're all over the place. The agent isn't learning anything useful.</p>
+      <p>Bottom line: the reward doesn't match the task. Nothing in it says "keep the pole up," so the agent gets mixed signals and never figures it out.</p>
+
+      <h3>2. Misleading reward</h3>
+      <p>Reward goes up. Looks great, right? Nope.</p>
+      <p>Check the components: cart velocity shoots up over time. The agent figured out that moving = reward, so it moves. A lot. The pole? Irrelevant.</p>
+      <p>It's doing exactly what we asked. We just asked for the wrong thing. That's reward hacking.</p>
+
+      <h3>3. Correct reward</h3>
+      <p>Reward climbs fast and levels off near max (~100). Episodes run the full length. Pole stays up.</p>
+      <p>Components tell the story: upright bonus high, center bonus steady, velocity penalty drops. The reward is telling the agent what we actually want: pole up, cart centered, smooth moves. And it listens.</p>
+
+      <h3>4. The takeaway</h3>
+      <blockquote style="margin: 16px 0; padding: 16px 20px; background: #f0f4ff; border-left: 4px solid var(--accent); border-radius: 0 8px 8px 0;">
+Agents learn what we reward, not what we intend.      </blockquote>
+      <p>Tweak the reward a little, behavior changes a lot:</p>
+      <table>
+        <thead>
+          <tr><th>Reward type</th><th>What the agent learns</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Bad reward</td><td>Unstable, inconsistent behavior</td></tr>
+          <tr><td>Misleading reward</td><td>Maximizes velocity instead of balancing</td></tr>
+          <tr><td>Correct reward</td><td>Stable pole balancing</td></tr>
+        </tbody>
+      </table>
+      <p>Same env, same algorithm. Only the reward changed. Behavior flipped completely.</p>
+
+      <h3>5. Why this matters</h3>
+      <p>Reward design is one of the trickiest parts of RL. In real stuff: robots, cars, drones: bad rewards mean wasted training, shaky control, or worse. You've got to nail down what you actually want before the agent goes off and optimizes something else.</p>
+
+      <div class="btn-box" style="margin-top: 24px;">
+        <p style="margin: 0 0 8px 0;">Quick recap:</p>
+        <ul style="margin: 0; padding-left: 20px;">
+          <li>Bad: noisy curve, no improvement, agent never balances.</li>
+          <li>Misleading: reward goes up, but the agent's just slamming the cart.</li>
+          <li>Correct: reward plateaus near max, pole stays up, smooth control.</li>
+          <li>One variable changed. Everything else followed.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="card" id="why">
+      <h2>7. Why This Happens</h2>
+      <ul>
+        <li>Credit assignment: The agent links high reward to whatever it just did. If the reward only cares about pole angle, it never learns that moving the cart matters.</li>
+        <li>Reward shaping: Adding terms (center bonus, velocity penalty) steers the agent toward what we want. Bad shaping: like rewarding velocity: steers it the wrong way.</li>
+        <li>Exploitation: The policy will take any shortcut. Reward velocity? It'll maximize velocity. The task is secondary.</li>
+      </ul>
+    </section>
+
+    <section class="card" id="lessons">
+      <h2>8. Key Lessons</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Reward</th>
+            <th>What you get</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>Bad</td><td>Wobbly pole, no balance</td></tr>
+          <tr><td>Misleading</td><td>Cart slamming, pole ignored</td></tr>
+          <tr><td>Correct</td><td>Stable balancing</td></tr>
+        </tbody>
+      </table>
+      <p>Keep in mind:</p>
+      <ul>
+        <li>Whatever gets reward is what the agent will do. Make sure that's what you want.</li>
+        <li>Agents will find shortcuts. Be careful what you reward.</li>
+        <li>Breaking rewards into pieces (upright, center, penalties) makes it easier to see what's going wrong.</li>
+      </ul>
+    </section>
+
+    <section class="card">
+      <h2>Plot comparison</h2>
+      <p>Run <code>python -m reward_hacking.reward_hacking_demo --plot</code> to generate the comparison. Full walkthrough above in <a href="#plot-results">Interpreting the plot</a>.</p>
+    </section>
+
+    <section class="card" id="exercise">
+      <h2>9. Exercise</h2>
+      <p>Try designing a reward that encourages smooth balancing with minimal cart motion.</p>
+      <ol>
+        <li>Add a new reward in <code>reward_functions.py</code> (e.g. <code>compute_reward_smooth_balance</code>) that rewards upright pole, penalizes cart drift from center, and penalizes velocity and control effort. You want the agent to prefer gentle, minimal moves.</li>
+        <li>Hook it up: add <code>"smooth"</code> to <code>REWARD_TYPES</code> in <code>reward_hacking_demo.py</code> and wire it into <code>reward_from_obs_action</code> in <code>reward_functions.py</code>.</li>
+        <li>Train it: <code>python -m reward_hacking.reward_hacking_demo --train smooth</code> (or use <code>train_rl.py</code> with your reward type).</li>
+        <li>Compare: run your policy and the correct-reward policy side by side. You should see gentler cart motion: still balanced, just less thrashing.</li>
+      </ol>
+      <p>Stronger penalties for motion and velocity give you a policy that balances with minimal movement. Reward design in action.</p>
+    </section>
+  </main>
+</div>
+</body>
+</html>

@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CartPole RL Tutorial</title>
+  <style>
+    :root {
+      --ink: #000000;
+      --muted: #525252;
+      --bg0: #f5f5f5;
+      --bg1: rgba(37, 99, 235, 0.12);
+      --bg2: rgba(59, 130, 246, 0.12);
+      --card: #ffffff;
+      --border: #d4d4d4;
+      --accent: #2563eb;
+      --accent-ghost: rgba(37, 99, 235, 0.15);
+      --radius: 16px;
+      --shadow: 0 10px 30px rgba(2, 6, 23, 0.12);
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Courier New", monospace;
+      --sans: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      font-family: var(--sans);
+      font-size: 17px;
+      line-height: 1.65;
+      color: var(--ink);
+      background:
+        radial-gradient(900px 600px at 5% -10%, var(--bg1), transparent 70%),
+        radial-gradient(1200px 700px at 110% 10%, var(--bg2), transparent 70%),
+        var(--bg0);
+    }
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      backdrop-filter: blur(8px);
+      background: rgba(255,255,255,.9);
+      border-bottom: 1px solid var(--border);
+    }
+    .head-inner { width: 96vw; max-width: 1800px; margin: 0 auto; padding: 14px 1.5vw; }
+    .title { font-weight: 800; color: var(--accent); font-size: 20px; }
+    .grid { width: 96vw; max-width: 1800px; margin: 0 auto; padding: 0 1.5vw; }
+    nav {
+      position: sticky;
+      top: 52px;
+      z-index: 9;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      gap: 8px 4px;
+      background: rgba(255,255,255,.95);
+      border-bottom: 1px solid var(--border);
+      padding: 12px 0 14px;
+      margin-bottom: 24px;
+      box-shadow: 0 2px 8px rgba(2, 6, 23, 0.06);
+    }
+    nav a {
+      display: inline-block;
+      padding: 8px 14px;
+      text-decoration: none;
+      color: var(--ink);
+      border-radius: 10px;
+      white-space: nowrap;
+    }
+    nav a:hover { background: var(--accent-ghost); color: var(--accent); }
+    .card {
+      background: var(--card);
+      border: 0.5px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      margin-top: 32px;
+      overflow: hidden;
+      padding: 32px 40px;
+    }
+    .card:first-child { margin-top: 0; }
+    .card h2 {
+      margin-top: 0;
+      padding: 16px 0;
+      border-bottom: 1px solid var(--accent);
+      font-weight: 700;
+      color: var(--accent);
+    }
+    h1 { color: var(--accent); font-size: 28px; margin-top: 0; }
+    h3 { font-size: 17px; margin-top: 24px; color: var(--ink); }
+    pre, code { font-family: var(--mono); font-size: 14px; background: #f8fafc; padding: 2px 6px; border-radius: 4px; }
+    pre {
+      font-family: var(--mono);
+      background: #f8fafc;
+      border: 0.5px solid #e2e8f0;
+      padding: 14px;
+      border-radius: 12px;
+      overflow: auto;
+      margin-top: 14px;
+      font-size: 14px;
+      white-space: pre-wrap;
+    }
+    .diagram { background: #f0f4ff; padding: 16px; border-radius: 12px; margin: 16px 0; text-align: center; font-family: var(--mono); }
+    .step { margin: 16px 0; padding-left: 20px; border-left: 3px solid var(--accent); }
+    ul { margin: 8px 0; }
+    img.tutorial-fig, video.tutorial-fig {
+      max-width: 100%;
+      height: auto;
+      border-radius: 12px;
+      border: 0.5px solid var(--border);
+      box-shadow: var(--shadow);
+      margin: 12px 0;
+    }
+    .video-side-by-side { display: flex; flex-wrap: wrap; gap: 16px; margin: 16px 0; align-items: flex-start; }
+    .video-side-by-side figure { flex: 1; min-width: 280px; margin: 0; }
+    .video-side-by-side video { width: 100%; }
+    .fig-caption { font-size: 14px; color: var(--muted); margin-top: 6px; margin-bottom: 16px; }
+    @media (max-width: 780px) { nav { flex-wrap: wrap; } nav a { font-size: 14px; padding: 6px 10px; } }
+  </style>
+</head>
+<body>
+<header>
+  <div class="head-inner">
+    <div class="title">RL Tutorial</div>
+  </div>
+</header>
+<div class="grid">
+  <main>
+    <nav>
+      <a href="#open-loop">1. Open Loop</a>
+      <a href="#why-fails">2. Why Open Loop Fails</a>
+      <a href="#rl-setup">3. RL Setup</a>
+      <a href="#env-design">4. Environment</a>
+      <a href="#reward-design">5. Reward Design</a>
+      <a href="#policy">6. Policy Architecture</a>
+      <a href="#training-debug">7. Training Debugging</a>
+      <a href="#reward-plots">8. Reward Plots</a>
+      <a href="#steps">Step-by-step directions</a>
+      <a href="#conclusion">Conclusion</a>
+      <a href="../reward_hacking/reward_hacking.html">Reward Hacking Demo</a>
+    </nav>
+
+    <section class="card" id="open-loop">
+      <h2>1. Open Loop Control</h2>
+      <p>In <code>open_loop.py</code> the force applied to the cart depends only on time, not on the state (cart position, pole angle, etc.):</p>
+      <figure>
+        <video src="../results/training/videos/01_initial_load.mp4" controls class="tutorial-fig" preload="metadata">Your browser does not support the video tag.</video>
+        <figcaption class="fig-caption">The cart-pole in MuJoCo (initial state). Run <code>python -m problem_setup.open_loop</code> to see it.</figcaption>
+      </figure>
+      <pre># From open_loop.py: control is u(t) = amp * sin(2*pi*freq*t)
+if state["mode"] == "script" and step % action_repeat == 0:
+    u = amp * np.sin(2 * np.pi * freq * data.time)
+    data.ctrl[0] = u
+mujoco.mj_step(model, data)</pre>
+      <p>The same <code>cartpole.xml</code> and stepping logic (<code>mj_step</code>) are used. This verifies physics and timing before adding RL.</p>
+    </section>
+
+    <section class="card" id="why-fails">
+      <h2>2. Why Open Loop Fails</h2>
+      <p>Open-loop control cannot stabilize the pole: it does not react to the current state. The pole will fall. To balance, we need feedback: observe state → choose action → repeat. That is what the RL policy learns.</p>
+      <figure>
+        <video src="../results/training/videos/02_zero_action.mp4" controls class="tutorial-fig" preload="metadata">Your browser does not support the video tag.</video>
+        <figcaption class="fig-caption">Without feedback, the pole does not stay upright. The RL policy will learn to correct based on state.</figcaption>
+      </figure>
+    </section>
+
+    <section class="card" id="rl-setup">
+        <p>Code lives in <code>problem_setup/</code> (environment, rewards, open-loop), <code>training/</code> (this tutorial, PPO), <code>reward_hacking/</code>, and <code>results/</code>. Run all commands from <code>mujoco_cartpole/</code>.</p>
+        <p>To balance the pole, the cart must move back and forth. This motion keeps it upright. The policy learns that if the pole leans right, then push cart right. If the pole passes upright, then slow down, and if the pole leans left then push cart left. You end up with small oscillations around the center of the cart.</p>
+        <div class="diagram">
+          observe state<br/>
+          ↓<br/>
+          detect pole falling<br/>
+          ↓<br/>
+          move cart under pole<br/>
+          ↓<br/>
+          pole stabilizes
+        </div>
+      <h2>3. Reinforcement Learning Setup</h2>
+      <p>Install dependencies for the RL portion. From the <code>mujoco_cartpole</code> directory, with your venv activated:</p>
+      <pre>pip install -r requirements_rl.txt</pre>
+      <p>That gets you Gymnasium, Stable-Baselines3 (PPO), Streamlit (reward dashboard), and matplotlib. You need these before running <code>train_rl.py</code>, <code>reward_dashboard.py</code>, or <code>reward_hacking_demo.py</code>.</p>
+      <p>The RL loop:</p>
+      <div class="diagram">
+        policy → action → environment → reward → update policy (repeat)
+      </div>
+      <p>Same MuJoCo model, wrapped in Gymnasium, with a reward function and PPO from Stable-Baselines3.</p>
+    </section>
+
+    <section class="card" id="env-design">
+      <h2>4. Environment Design</h2>
+      <p><code>env_cartpole_rl.py</code> wraps <code>cartpole.xml</code> and exposes:</p>
+      <ul>
+        <li>Observation: cart_position, cart_velocity, pole_angle, pole_angular_velocity</li>
+        <li>Action: continuous force on the cart (same as <code>data.ctrl[0]</code> in open_loop)</li>
+        <li>Termination: pole angle too large, cart out of bounds, or max episode length</li>
+      </ul>
+      <p>You can tweak <code>max_episode_steps</code>, <code>initial_state_noise</code>, and termination thresholds in the env.</p>
+    </section>
+
+    <section class="card" id="reward-design">
+      <h2>5. Reward Function Design</h2>
+      <p>The reward tells the agent what to optimize. If it's poorly designed, the agent will learn the wrong behavior (see the reward hacking demo). We decompose the reward into interpretable components so you can see what drives learning and tune weights without guessing. Each component has a clear meaning: balance rewards the pole being upright, center rewards the cart staying near the middle, and the penalties discourage jerky motion and excessive force.</p>
+      <p>Rewards are split into components in <code>reward_functions.py</code>:</p>
+      <pre># reward_functions.py: components
+reward_dict = {
+    "balance": cos(pole_angle),      # upright = 1
+    "upright": cos(pole_angle),
+    "center": 1 - 0.5*|cart_x|/2,   # cart near center
+    "velocity_penalty": cart_vel² + 0.1*pole_angular_vel²,
+    "control_penalty": action²,
+    "termination_penalty": 1 if terminated else 0
+}
+# Total = w_balance*balance + w_upright*upright + w_center*center
+#         - w_velocity*velocity_penalty - w_control*control_penalty - w_termination*termination_penalty</pre>
+
+      <h3>How we chose each component</h3>
+      <p>Each term encodes a specific goal and is designed to give a smooth, differentiable signal:</p>
+      <ul>
+        <li>upright = cos(pole_angle) :  We use cosine instead of −|angle| because cos(0)=1 (best) and cos(π)=−1 (worst). It's smooth everywhere, so the agent gets a clear gradient toward upright. A penalty like −|angle| has a kink at zero and gives no gradient for cart motion.</li>
+        <li>center = 1 − 0.5·|cart_x|/2 :  Cart position is in [−2, 2] (track limits). At center (x=0) the bonus is 1; at the edges it drops. The 0.5 factor keeps this term smaller than the upright bonus so balancing stays the main objective.</li>
+        <li>velocity_penalty = cart_vel² + 0.1·pole_angular_vel² :  Squared terms penalize fast motion without favoring a direction. We weight pole angular velocity by 0.1 because cart velocity usually dominates; we want to discourage jerky cart motion first.</li>
+        <li>control_penalty = action² :  Action is the force applied. Squaring penalizes large forces and encourages minimal control effort.</li>
+      </ul>
+
+      <h3>How we combine them</h3>
+      <p>We add bonuses and subtract penalties. Default weights: <code>w_balance=1</code>, <code>w_upright=1</code>, <code>w_center=0.5</code>, <code>w_velocity=0.01</code>, <code>w_control=0.001</code>. Balance and upright are the main drivers; center nudges the cart toward the middle. Penalties use small weights so they shape behavior without overwhelming the primary reward: if penalties were too large, the agent would learn to stand still instead of balancing.</p>
+
+      <h3>Why these penalty weights?</h3>
+      <p>Velocity and control penalties are scaled down (0.01 and 0.001) because their raw values can be large (e.g. cart_vel² can reach tens or hundreds). If we didn't scale them, the agent would over-optimize for "don't move" and never learn to balance. The weights were tuned so that: (1) balancing remains the dominant objective, and (2) the agent still gets a noticeable signal to reduce thrashing. You can experiment with different weights in <code>reward_dashboard.py</code>.</p>
+
+      <p>Run <code>streamlit run reward_hacking/reward_dashboard.py</code> to adjust weights with sliders and see how changes affect the learned behavior.</p>
+      <figure>
+        <img src="./demo_videos/reward_gui.png" alt="CartPole reward weight dashboard: sliders for reward components and live preview" class="tutorial-fig" />
+        <figcaption class="fig-caption">Reward dashboard: tune weights with sliders and preview how each component contributes to the total for a sample state.</figcaption>
+      </figure>
+    </section>
+
+    <section class="card" id="policy">
+      <h2>6. Policy Architecture</h2>
+      <p>The policy is a neural network that maps observations to actions. For cart-pole we use a simple MLP (multi-layer perceptron): the four state variables go in, a continuous force value comes out. The network learns the mapping from state to action by trial and error during training.</p>
+      <p>In <code>policies.py</code> two options are defined:</p>
+      <ul>
+        <li>MLPPolicySmall: 2 hidden layers, 64 units (faster, less capacity)</li>
+        <li>MLPPolicyLarge: 3 hidden layers, 256 units (slower, more capacity)</li>
+      </ul>
+      <p>For cart-pole, the small policy is usually enough because the task is simple and the state space is low-dimensional. Use the large policy if you need more capacity (e.g. for harder variants). In <code>train_rl.py</code> set <code>POLICY_NAME = "small"</code> or <code>"large"</code> to switch.</p>
+    </section>
+
+    <section class="card" id="training-debug">
+      <h2>7. Training Debugging</h2>
+      <p>Run training:</p>
+      <pre>cd mujoco_cartpole
+python -m training.train_rl --train --timesteps 100000</pre>
+      <p>Hyperparameters are at the top of <code>training/train_rl.py</code>. Outputs (model, curves, logs) are saved under <code>results/training/</code>. <code>learning_rate</code>, <code>gamma</code>, <code>n_steps</code>, <code>batch_size</code>, <code>total_timesteps</code>.</p>
+      <p>Cart-pole trains fast. It's a simple control problem: low-dimensional state, short horizon, dense reward. The agent just needs to learn "move the cart under the falling pole." With only four observations (cart position, velocity, pole angle, angular velocity), PPO finds a good strategy quickly, often within a few thousand episodes. Once it does, episode length hits the max and reward plateaus. Harder tasks (humanoids, manipulation) have bigger state spaces and sparser rewards, so they need millions of timesteps.</p>
+      <p><code>diagnostics.py</code> runs after training and warns about:</p>
+      <ul>
+        <li>Oscillating rewards</li>
+        <li>Reward collapse</li>
+        <li>Termination exploitation (episodes ending very early)</li>
+        <li>Unstable training (high variance)</li>
+      </ul>
+    </section>
+
+    <section class="card" id="reward-plots">
+      <h2>8. Interpreting Reward Plots</h2>
+      <p>During training, <code>training/train_rl.py</code> saves <code>results/training/training_curves.png</code> with:</p>
+      <ul>
+        <li>Episode reward and episode length</li>
+        <li>Cumulative reward components per episode (balance, center, velocity_penalty, etc.)</li>
+        <li>Smoothed episode reward</li>
+      </ul>
+      <p>When are the curves good? When reward and episode length stabilize, reward near a plateau, length at or near max. If smoothed reward keeps rising, train more. If they've flattened for many episodes, you're probably done. For cart-pole, 100k timesteps is usually enough; 200k can smooth things out a bit more.</p>
+      <p>Example training curves (your <code>results/training/training_curves.png</code> after a run):</p>
+      <figure>
+        <img src="../results/training/training_curves.png" alt="Training curves: episode reward, episode length, reward components, smoothed reward" class="tutorial-fig" />
+        <figcaption class="fig-caption">training_curves.png, episode reward, episode length, reward components, smoothed reward.</figcaption>
+      </figure>
+
+      <h3>Interpreting Training Curves</h3>
+      <p>Early on, reward is noisy, the policy is still exploring and often fails. As training goes on, reward increases and stabilizes, and the smoothed curve plateaus. Episode length hits the max, meaning the agent keeps the pole up for the full episode. The component plot shows velocity penalty dropping while balance rewards dominate. In the viewer you'll see small corrective movements instead of big unstable swings. That means the policy has converged.</p>
+
+      <h3>Understanding early noise and later convergence</h3>
+      <p>1. Why rewards are noisy early<br/>
+      At the start the policy is mostly random. It explores: push left, push right, overcorrect, pole swings, episode ends. That gives you noisy rewards and short episodes. Your plot shows this, early episodes fluctuate, later ones stabilize. The policy is learning.</p>
+      <p>2. Why the cart moves back and forth a lot early<br/>
+      Early in training the agent hasn’t learned the correct feedback control rule yet. So it behaves like this: pole tilts right → agent pushes right too hard → pole swings left → agent pushes left too hard → repeat. This produces jerky oscillations. This is normal exploration behavior.</p>
+      <p>3. Why the noise disappears later<br/>
+      The policy learns: pole tilts right → small correction → pole stabilizes. Motion gets smoother, episodes get longer. Your episode length graph shows early training around 45–49 steps, later training at 50. The agent is balancing for the full episode.</p>
+      <p>4. What the reward components show<br/>
+      Velocity penalty drops, balance reward dominates, control penalty stabilizes. The agent is learning to move less, stay upright, and use smoother forces.</p>
+      <p>5. What the final motion should look like<br/>
+      Small cart corrections, near-vertical pole, cart near center. If the cart were slamming left/right, that'd be reward hacking. Your curves don't show that.</p>
+      <p>6. Short takeaway<br/>
+      Noisy rewards and jerky motion early on are normal, the policy is still exploring. As it learns, it finds a stabilizing strategy, motion smooths out, and episodes get longer. That's the usual pattern.</p>
+      <p>Healthy learning behavior means noisy exploration early, convergence later, stable episode length, and a smoother control policy.</p>
+
+      <p>Use these plots to see which components dominate and whether the agent is minimizing penalties or maximizing balance.</p>
+
+      <h3>Using TensorBoard</h3>
+      <p>Training writes TensorBoard events to <code>results/training/logs/</code>. You don't need TensorFlow, Stable-Baselines3 logs in a format TensorBoard can read. To view curves, policy loss, value loss, etc.:</p>
+      <ol>
+        <li>Install TensorBoard (included in <code>requirements_rl.txt</code>): <code>pip install tensorboard</code></li>
+        <li>Run TensorBoard from the <code>mujoco_cartpole</code> directory:
+          <pre>cd mujoco_cartpole
+tensorboard --logdir=results/training/logs</pre>
+        </li>
+        <li>Open the URL shown in the terminal (usually <code>http://localhost:6006</code>) in your browser. Use the Time Series or Scalars view to see <code>rollout/ep_rew_mean</code>, <code>rollout/ep_len_mean</code>, and other metrics over training steps.</li>
+      </ol>
+    </section>
+
+    <section class="card">
+      <h2>Compare Open Loop vs Learned Policy</h2>
+      <p>Open loop: <code>python -m problem_setup.open_loop</code>, sinusoid force, pole falls. After training: <code>python -m training.train_rl --play</code> runs the trained policy in the same viewer so you can compare.</p>
+
+      <h3>Before and after</h3>
+      <p>Below: open-loop (no feedback, pole falls) vs post-training (learned policy keeps it balanced from the same start).</p>
+      <p>Before (open loop): Control depends only on time. Cart moves on a fixed schedule, pole falls. Run <code>python -m problem_setup.open_loop</code> to see it.</p>
+      <p>After (trained): The agent observes state and applies small corrections to keep the pole up.</p>
+      <div class="video-side-by-side">
+        <figure>
+          <video src="../results/training/videos/02_zero_action.mp4" controls class="tutorial-fig" preload="metadata">Your browser does not support the video tag.</video>
+          <figcaption class="fig-caption">Zero action, post-training policy (<code>results/training/videos/02_zero_action.mp4</code>).</figcaption>
+        </figure>
+        <figure>
+          <video src="./demo_videos/replay.mov" controls class="tutorial-fig" preload="metadata">Your browser does not support the video tag.</video>
+          <figcaption class="fig-caption">Replay, full playback of the trained policy</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Reward Hacking Demonstration</h2>
+      <p>See how different reward functions lead to different learned behavior: <a href="../reward_hacking/reward_hacking.html">reward_hacking.html</a>. Toggle between bad, misleading, and correct rewards and compare policies in the viewer.</p>
+    </section>
+
+    <section class="card" id="steps">
+      <h2>Step-by-step directions</h2>
+      <p>Follow these in order.</p>
+      <ol>
+        <li class="step">
+Go to the project folder and activate the venv.          <pre>cd mujoco_cartpole
+source .venv/bin/activate</pre>
+        </li>
+        <li class="step">
+Run open-loop control to verify the simulation (pole will fall; that’s expected).
+          <pre>python -m problem_setup.open_loop</pre>
+          Close the viewer when done.
+        </li>
+        <li class="step">
+Install RL dependencies (Gymnasium, Stable-Baselines3, Streamlit, matplotlib, tensorboard).
+          <pre>pip install -r requirements_rl.txt</pre>
+        </li>
+        <li class="step">
+Train the policy. This may take a few minutes.
+          <pre>python -m training.train_rl --train --timesteps 100000</pre>
+          When it finishes, the model is saved as <code>results/training/ppo_cartpole.zip</code> and <code>results/training/training_curves.png</code> is updated.
+        </li>
+        <li class="step">
+View TensorBoard (optional). In a separate terminal, activate the venv and run TensorBoard from <code>mujoco_cartpole</code>:
+          <pre>tensorboard --logdir=results/training/logs</pre>
+          Open the URL shown (e.g. <code>http://localhost:6006</code>) in your browser to inspect learning curves and metrics.
+        </li>
+        <li class="step">
+Run the trained policy in the MuJoCo viewer to test it.
+          <pre>python -m training.train_rl --play</pre>
+          Compare with open loop: the learned policy should keep the pole balanced.
+        </li>
+      </ol>
+      <p style="margin-top: 24px; font-weight: 600;">Now you have completed the tutorial and have control of the cart-pole system from open-loop control to a trained RL policy and playback.</p>
+
+      <h3 id="conclusion">Conclusion</h3>
+      <p>We started with open-loop control meaning we did not use any feedback and saw that the pole falls. With RL, the policy learns to choose actions based on state to maximize reward. The controller learns to move the cart to keep the pole balanced. The reward hacking demo drives home the main lesson: agents don't learn what we intend, they learn what we reward. Small reward changes lead to very different behavior, unstable oscillations, cart slamming, or stable balancing. That's why reward design matters so much.</p>
+      <p>For more on reward design pitfalls, see <a href="../reward_hacking/reward_hacking.html">Reward Hacking Demo</a>.</p>
+    </section>
+  </main>
+</div>
+</body>
+</html>

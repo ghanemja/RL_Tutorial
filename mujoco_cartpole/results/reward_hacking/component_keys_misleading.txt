@@ -1,0 +1,7 @@
+cart_velocity
+balance
+upright
+center
+velocity_penalty
+control_penalty
+termination_penalty

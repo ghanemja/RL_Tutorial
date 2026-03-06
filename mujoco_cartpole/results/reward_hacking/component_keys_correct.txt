@@ -1,0 +1,8 @@
+upright_bonus
+center_bonus
+velocity_penalty
+control_penalty
+balance
+upright
+center
+termination_penalty

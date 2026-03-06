@@ -1,0 +1,1035 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>MuJoCo Reinforcement Learning Setup + Open-Loop Verification</title>
+
+<style>
+:root {
+  --ink: #000000;
+  --muted: #525252;
+  --bg0: #f5f5f5;
+  --bg1: rgba(37, 99, 235, 0.12);
+  --bg2: rgba(59, 130, 246, 0.12);
+  --card: #ffffff;
+  --border: #d4d4d4;
+  --accent: #2563eb;
+  --accent-ghost: rgba(37, 99, 235, 0.15);
+  --radius: 16px;
+  --shadow: 0 10px 30px rgba(2, 6, 23, 0.12);
+  --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Courier New", monospace;
+  --sans: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0;
+  font-family: var(--sans);
+  font-size: 17px;
+  line-height: 1.65;
+  color: var(--ink);
+  background:
+    radial-gradient(900px 600px at 5% -10%, var(--bg1), transparent 70%),
+    radial-gradient(1200px 700px at 110% 10%, var(--bg2), transparent 70%),
+    var(--bg0);
+}
+
+/* Header */
+header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  backdrop-filter: blur(8px);
+  background: rgba(255,255,255,.9);
+  border-bottom: 1px solid var(--border);
+}
+.head-inner {
+  width: 96vw;
+  max-width: 1800px;
+  margin: 0 auto;
+  padding: 14px 1.5vw;
+}
+.title {
+  font-weight: 800;
+  color: var(--accent);
+  font-size: 20px;
+}
+
+/* Layout */
+.grid {
+  width: 96vw;
+  max-width: 1800px;
+  margin: 0 auto;
+  padding: 0 1.5vw;
+}
+
+/* TOC : horizontal at top, centered */
+nav {
+  position: sticky;
+  top: 52px;
+  z-index: 9;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px 4px;
+  background: rgba(255,255,255,.95);
+  border-bottom: 1px solid var(--border);
+  padding: 12px 0 14px;
+  margin-bottom: 24px;
+  box-shadow: 0 2px 8px rgba(2, 6, 23, 0.06);
+}
+nav h3 {
+  font-size: 14px;
+  font-weight: 700;
+  margin: 0 12px 0 0;
+  flex-shrink: 0;
+}
+nav a {
+  display: inline-block;
+  padding: 8px 14px;
+  text-decoration: none;
+  color: var(--ink);
+  border-radius: 10px;
+  white-space: nowrap;
+}
+nav a:hover {
+  background: var(--accent-ghost);
+  color: var(--accent);
+}
+nav a.active {
+  background: var(--accent);
+  color: white;
+}
+
+/* Main content */
+main {
+  min-width: 0;
+}
+
+/* Cards */
+.card {
+  background: var(--card);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  margin-top: 32px;
+  overflow: hidden;
+}
+.card:first-child {
+  margin-top: 0;
+}
+.card .head {
+  padding: 20px 40px;
+  background: linear-gradient(180deg, #f8fafc, #f1f5f9);
+  border-bottom: 1px solid var(--accent);
+  font-weight: 800;
+  color: var(--accent);
+}
+.card .body {
+  padding: 32px 40px;
+}
+
+/* Steps */
+.step {
+  background: #ffffff;
+  border: 0.5px solid var(--border);
+  border-radius: 14px;
+  margin-bottom: 28px;
+  box-shadow: var(--shadow);
+}
+.step-head {
+  padding: 14px 20px;
+  background: linear-gradient(180deg, #f1f5f9, #e2e8f0);
+  border-bottom: 1px solid var(--accent);
+  font-weight: 700;
+  color: var(--accent);
+}
+.step-body {
+  padding: 22px;
+}
+
+pre {
+  font-family: var(--mono);
+  background: #f8fafc;
+  border: 0.5px solid #e2e8f0;
+  padding: 14px;
+  border-radius: 12px;
+  overflow:auto;
+  margin-top: 14px;
+  font-size: 14px;
+}
+
+/* Tutorial screenshots */
+.tutorial-screenshot {
+  max-width: 100%;
+  width: 640px;
+  height: auto;
+  border-radius: 12px;
+  border: 0.5px solid var(--border);
+  box-shadow: var(--shadow);
+  margin: 14px 0;
+  display: block;
+}
+.tutorial-screenshot figcaption,
+.screenshot-caption {
+  font-size: 14px;
+  color: var(--muted);
+  margin-top: 6px;
+  margin-bottom: 16px;
+}
+
+@media (max-width: 780px) {
+  nav { flex-wrap: wrap; }
+  nav a { font-size: 14px; padding: 6px 10px; }
+}
+</style>
+</head>
+
+<body>
+
+<header>
+  <div class="head-inner">
+    <div class="title">RL Tutorial</div>
+  </div>
+</header>
+
+<div class="grid">
+
+<nav>
+  <a href="#overview">Overview</a>
+  <a href="#problem">Problem Definition</a>
+  <a href="#environment">Environment Setup</a>
+  <a href="#timing">Physics & Timing</a>
+  <a href="#openloop">Open-Loop Verification</a>
+  <a href="#horizon">Horizon & Episode Logic</a>
+  <a href="#rl">Bridge to RL</a>
+  <a href="#debug">Debug Checklist</a>
+</nav>
+
+<main>
+
+<section class="card" id="overview">
+<div class="head">OVERVIEW</div>
+<div class="body">
+
+This tutorial walks through RL problem framing, environment setup, and training. It follows the Applied RL flow from class. When framing your problem, you'll want to answer:
+
+<ul>
+  <li>What behavior am I trying to teach?</li>
+  <li>What exactly can the agent control?</li>
+  <li>What does the agent observe?</li>
+  <li>How is the environment physically defined?</li>
+  <li>What timestep is the simulation running at?</li>
+  <li>How often do actions change?</li>
+  <li>Does the system behave correctly under open-loop control?</li>
+</ul>
+
+Most RL failures come from the problem setup, poorly defined behaviors, unstable physics, or messy reward functions, not from the optimizer itself.
+
+In this tutorial you'll:
+
+<ol>
+<li>Frame a learning behavior explicitly</li>
+<li>Define the environment in MuJoCo</li>
+<li>Configure physics parameters and timestep</li>
+<li>Understand the difference between simulation dt and control dt</li>
+<li>Verify the system with open-loop control before adding learning</li>
+</ol>
+
+</div>
+</section>
+
+
+<section class="card" id="problem">
+<div class="head">PROBLEM DEFINITION</div>
+<div class="body">
+
+<div class="step">
+<div class="step-head">Step 1: Understanding the Physical System</div>
+<div class="step-body">
+
+We use a simple 2-DOF cart-pole so the focus stays on problem framing and setup, not model complexity.
+
+It has:
+
+<ul>
+  <li>A cart that moves horizontally along a track</li>
+  <li>A rigid pole attached to the cart by a hinge joint</li>
+  <li>Gravity acting downward </li>
+</ul>
+
+The pole can rotate freely. Without control, it falls. Your job is to apply horizontal force to the cart to keep the pole balanced.
+
+<br/><br/>
+State Variables (Mechanical Description)<br/>
+
+At any moment the system is described by:
+
+<ul>
+  <li>Cart position (x)</li>
+  <li>Cart velocity (ẋ)</li>
+  <li>Pole angle (θ)</li>
+  <li>Pole angular velocity (θ̇)</li>
+</ul>
+
+Those four values fully describe the state.
+
+<br/><br/>
+Control<br/>
+The agent controls one input:
+
+<ul>
+<li>Horizontal force applied to the cart</li>
+</ul>
+
+
+The agent can't directly control the pole angle, angular velocity, or gravity, it stabilizes the pole indirectly by moving the cart. That makes the system underactuated: one control input has to regulate multiple state variables.
+
+</div>
+</div>
+
+<div class="step">
+<div class="step-head">Step 2: Formulate the Learning Problem</div>
+<div class="step-body">
+
+<p>
+Next we translate the physical system into an RL problem. We define:
+</p>
+
+<p>Agent</p>
+<p>
+A policy that outputs a horizontal force applied to the cart.
+The agent does not directly control the pole, stabilization is indirect.
+</p>
+
+<p>Action Space</p>
+<p>
+A continuous scalar value representing cart force.
+This value will later be bounded (e.g., within a specified force limit).
+</p>
+
+<p>Observation Space</p>
+<p>
+Cart position (x), cart velocity (ẋ), pole angle (θ), pole angular velocity (θ̇).
+These quantities form the information available to the policy at each timestep.
+</p>
+
+<p>
+Here the observation fully represents the state. In more complex systems it might be partial or noisy.
+</p>
+
+<p>Objective</p>
+<p>
+Maintain the pole in the upright position (θ ≈ 0) over time.
+The goal is stability, not speed or energy efficiency.
+</p>
+
+<p>Success Metric</p>
+<p>
+The system is considered successful if the pole remains upright
+for the duration of the episode horizon.
+</p>
+
+<p>Termination Condition</p>
+<p>
+The episode ends if:
+</p>
+
+<ul>
+  <li>|θ| exceeds a chosen threshold (e.g., 30°), or</li>
+  <li>A fixed time horizon is reached.</li>
+</ul>
+
+<p>Horizon</p>
+<p>
+A fixed episode length will be defined (for example, 5 seconds).
+The horizon determines how long the agent must maintain stability.
+</p>
+
+<p>
+At this stage we're defining structure, not rewards or algorithms. Do this before writing code.
+</p>
+
+</div>
+</div>
+
+</div>
+</section>
+
+<section class="card" id="environment">
+<div class="head">ENVIRONMENT SETUP</div>
+<div class="body">
+
+<div class="step">
+  <div class="step-head">Step 0: Install MuJoCo + Create a Project Folder</div>
+  <div class="step-body">
+
+    <p>
+      We'll run MuJoCo from Python. Create a folder for the demo:
+    </p>
+
+    <pre>
+mkdir -p mujoco_cartpole
+cd mujoco_cartpole
+    </pre>
+
+    <p>
+      Create and activate a virtual environment, then install MuJoCo and NumPy:
+    </p>
+
+    <pre>
+python -m venv .venv
+source .venv/bin/activate
+pip install -U pip
+pip install mujoco numpy
+    </pre>
+
+    <p>
+Quick check: you should be able to import MuJoCo without errors:
+    </p>
+
+    <pre>
+python -c "import mujoco; print('mujoco version ok')"
+    </pre>
+
+  </div>
+</div>
+
+
+<div class="step">
+  <div class="step-head">Step 1: Create <code>cartpole.xml</code> (MuJoCo MJCF)</div>
+  <div class="step-body">
+
+    <p>
+      We defined a cart that moves horizontally (x) and a pole that rotates (θ). In MuJoCo we implement that with:
+    </p>
+
+    <ul class="list">
+      <li>body: a rigid object (cart, pole)</li>
+      <li>joint: a degree of freedom (slide joint, hinge joint)</li>
+      <li>geom: the shape used for collision/visualization (box, capsule, plane)</li>
+      <li>actuator: how the agent applies control (a motor on the cart slide joint)</li>
+    </ul>
+
+    <p>
+      Create <code>cartpole.xml</code> with the content below. The comments show how the problem framing maps to the XML.
+    </p>
+
+    <pre>
+&lt;mujoco model="cartpole"&gt;
+
+  &lt;!--
+    GLOBAL PHYSICS SETTINGS
+    - timestep: simulation dt (physics integration step)
+    - gravity: sets the "down" direction and magnitude
+  --&gt;
+  &lt;option timestep="0.002" gravity="0 0 -9.81"/&gt;
+
+  &lt;worldbody&gt;
+
+    &lt;!-- Lighting: main light from above-front, fill from the side --&gt;
+    &lt;light name="main" pos="0 0 4" dir="0 0 -1" directional="true" diffuse="1 1 1" specular="0.4 0.4 0.4"/&gt;
+    &lt;light name="fill" pos="-2 2 3" dir="0.3 -0.3 -1" directional="true" diffuse="0.5 0.5 0.5" specular="0.1 0.1 0.1"/&gt;
+
+    &lt;!--
+      WORLD / GROUND
+      Light gray plane plus dark stripes along x so cart sliding is easy to see.
+    --&gt;
+    &lt;geom type="plane" size="5 5 0.1" rgba="0.92 0.92 0.95 1"/&gt;
+
+    &lt;!-- Dark floor stripes (perpendicular to cart motion) so motion is visible --&gt;
+    &lt;geom name="stripe_m2" type="box" pos="-2 0 0.051" size="0.22 5 0.008" rgba="0.45 0.45 0.5 1" contype="0" conaffinity="0"/&gt;
+    &lt;geom name="stripe_m1_5" type="box" pos="-1.5 0 0.051" size="0.22 5 0.008" rgba="0.45 0.45 0.5 1" contype="0" conaffinity="0"/&gt;
+    &lt;geom name="stripe_m1" type="box" pos="-1 0 0.051" size="0.22 5 0.008" rgba="0.45 0.45 0.5 1" contype="0" conaffinity="0"/&gt;
+    &lt;geom name="stripe_m0_5" type="box" pos="-0.5 0 0.051" size="0.22 5 0.008" rgba="0.45 0.45 0.5 1" contype="0" conaffinity="0"/&gt;
+    &lt;geom name="stripe_0" type="box" pos="0 0 0.051" size="0.22 5 0.008" rgba="0.45 0.45 0.5 1" contype="0" conaffinity="0"/&gt;
+    &lt;geom name="stripe_0_5" type="box" pos="0.5 0 0.051" size="0.22 5 0.008" rgba="0.45 0.45 0.5 1" contype="0" conaffinity="0"/&gt;
+    &lt;geom name="stripe_1" type="box" pos="1 0 0.051" size="0.22 5 0.008" rgba="0.45 0.45 0.5 1" contype="0" conaffinity="0"/&gt;
+    &lt;geom name="stripe_1_5" type="box" pos="1.5 0 0.051" size="0.22 5 0.008" rgba="0.45 0.45 0.5 1" contype="0" conaffinity="0"/&gt;
+    &lt;geom name="stripe_2" type="box" pos="2 0 0.051" size="0.22 5 0.008" rgba="0.45 0.45 0.5 1" contype="0" conaffinity="0"/&gt;
+
+    &lt;!--
+      CART BODY
+      This is the rigid cart object.
+      In problem framing, the cart has position x and velocity ẋ.
+      Those come from this slide joint below.
+    --&gt;
+    &lt;body name="cart" pos="0 0 0.1"&gt;
+
+      &lt;!--
+        CART DOF: SLIDE JOINT
+        This creates the horizontal degree of freedom (x).
+        - axis="1 0 0" means motion along +x
+        - range limits how far the cart can slide
+      --&gt;
+      &lt;joint name="slide" type="slide" axis="1 0 0" range="-2 2"/&gt;
+
+      &lt;!--
+        CART GEOMETRY
+        A box shape so we can see the cart in the viewer.
+      --&gt;
+      &lt;geom type="box" size="0.15 0.10 0.05" rgba="0.25 0.45 0.85 1"/&gt;
+
+      &lt;!--
+        POLE BODY (attached to cart)
+        The pole is a child body of the cart, meaning it moves with the cart.
+      --&gt;
+      &lt;body name="pole" pos="0 0 0.05"&gt;
+
+        &lt;!--
+          POLE DOF: HINGE JOINT
+          This creates the pole angle θ and angular velocity θ̇.
+          - axis="0 1 0" means it rotates about the y-axis
+          - with gravity, this rotation produces the falling dynamics we want
+        --&gt;
+        &lt;joint name="hinge" type="hinge" axis="0 1 0"/&gt;
+
+        &lt;!--
+          POLE GEOMETRY
+          Capsule from (0,0,0) to (0,0,0.6).
+          This gives the pole a visible shape and a lever arm.
+        --&gt;
+        &lt;geom type="capsule" fromto="0 0 0 0 0 0.6" size="0.03" rgba="0.85 0.25 0.25 1"/&gt;
+
+      &lt;/body&gt;
+    &lt;/body&gt;
+  &lt;/worldbody&gt;
+
+  &lt;!--
+    ACTUATOR = AGENT CONTROL AUTHORITY
+    This is the key mapping from problem framing to code.
+
+    In problem framing we said:
+      "The agent controls a horizontal force applied to the cart."
+
+    Here we implement that by attaching a motor to the cart's slide joint.
+    - ctrlrange bounds the control input (action limits)
+  --&gt;
+  &lt;actuator&gt;
+    &lt;motor name="cart_motor" joint="slide" ctrlrange="-10 10"/&gt;
+  &lt;/actuator&gt;
+
+&lt;/mujoco&gt;
+    </pre>
+
+    <p>
+Key takeaway: The <code>&lt;joint&gt;</code> elements define the degrees of freedom (x and θ),
+      and the <code>&lt;actuator&gt;</code> defines what the agent can control (cart force).
+    </p>
+
+    <p>
+Simulation timestep: <code>timestep="0.002"</code> means MuJoCo integrates physics at 500 Hz.
+      This is not the same as the rate at which your policy will change actions. We will control that later using
+      an action-repeat / control loop frequency.
+    </p>
+
+    <p>
+Lighting and colors: The <code>&lt;light&gt;</code> elements and <code>rgba</code> on geoms
+      are for viewer visibility: a main light from above, a fill light from the side, and distinct colors (e.g. blue cart,
+      red pole) so the scene is easy to see when you run the open-loop script.
+      The dark floor stripes (non-colliding box geoms) make the cart’s horizontal motion easy to see.
+    </p>
+
+  </div>
+</div>
+
+</div>
+</section>
+
+<section class="card" id="timing">
+<div class="head">PHYSICS & TIMING</div>
+<div class="body">
+<p>
+One of the most misunderstood concepts in RL is the difference between simulation timestep and control timestep, they're not the same.
+</p>
+
+<hr>
+
+<p>Simulation Timestep (Physics dt)</p>
+
+<p>
+In <code>cartpole.xml</code>, we defined:
+</p>
+
+<pre>
+&lt;option timestep="0.002"/&gt;
+</pre>
+
+<p>
+This means MuJoCo integrates physics every 0.002 seconds.
+That is 500 Hz physics simulation.
+</p>
+
+<p>
+At every simulation step, MuJoCo updates:
+</p>
+
+<ul>
+  <li>Joint positions</li>
+  <li>Joint velocities</li>
+  <li>Contact forces</li>
+  <li>Constraint resolution</li>
+</ul>
+
+<p>
+Physics integration must run fast to remain numerically stable.
+</p>
+
+<hr>
+
+<p>Control Timestep (Policy Update Rate)</p>
+
+<p>
+The policy does <em>not</em> need to change its action at 500 Hz.
+Instead, we usually hold actions constant for multiple simulation steps.
+</p>
+
+<p>
+For example:
+</p>
+
+<ul>
+  <li>Simulation dt = 0.002</li>
+  <li>Apply action every 10 simulation steps</li>
+</ul>
+
+<p>
+Then:
+</p>
+
+<p>
+Control dt = 0.002 × 10 = 0.02 seconds<br>
+This means the policy runs at 50 Hz.
+</p>
+
+<hr>
+
+<p>Why This Matters</p>
+
+<ul>
+  <li>Stability: Large control dt can cause jerky or unstable behavior.</li>
+  <li>Energy Injection: Updating too slowly can inject unrealistic impulses.</li>
+  <li>Learning Speed: Smaller control dt increases episode length (more steps).</li>
+  <li>Numerical Accuracy: Physics dt must remain small for correct dynamics.</li>
+</ul>
+
+<p>
+If simulation dt is too large → physics becomes unstable.
+If control dt is too large → control becomes coarse and hard to learn.
+</p>
+
+<hr>
+
+<p>Example: Episode Length</p>
+
+<p>
+Suppose the episode horizon is 5 seconds.
+</p>
+
+<ul>
+  <li>Physics dt = 0.002 → 2500 simulation steps</li>
+  <li>Control dt = 0.02 → 250 control decisions</li>
+</ul>
+
+<p>
+Reinforcement learning algorithms count control steps,
+not raw physics steps.
+</p>
+
+<hr>
+
+<p>
+Timing misconfiguration is one of the most common causes of RL failure.
+Many unstable training runs are actually physics or timing errors,
+not algorithm problems.
+</p>
+</div>
+</section>
+
+<section class="card" id="openloop">
+<div class="head">OPEN-LOOP VERIFICATION</div>
+<div class="body">
+<p>
+Before training any policy, verify that the environment behaves correctly under open-loop control. This is a required step: Physics → Control → Reward → Optimization.
+</p>
+
+<p>
+Open-loop means the environment evolves according to physics while we apply a fixed control signal (not a learned policy). That lets you catch:
+</p>
+
+<ul class="list">
+  <li>unstable physics settings (timestep too large, poor damping)</li>
+  <li>incorrect actuator configuration (wrong joint, wrong limits)</li>
+  <li>unexpected scaling (forces too strong/weak)</li>
+  <li>timing mistakes (control frequency too slow/fast)</li>
+</ul>
+
+<div class="step">
+  <div class="step-head">Step 1: Create <code>open_loop.py</code> (Sinusoidal Force Test)</div>
+  <div class="step-body">
+
+    <p>
+      This script applies a sinusoidal force to the cart. The goal is not the control, but to confirm that the model responds smoothly and predictably.
+    </p>
+
+    <p>To replay from the start, click Reset in the Simulation panel (or press R).</p>
+    <figure>
+      <img src="mujoco_cartpole/problem_setup/demo_images/replay.png" alt="MuJoCo viewer Reset button" class="tutorial-screenshot" />
+      <figcaption class="screenshot-caption">Reset button in the MuJoCo viewer, use to replay an action.</figcaption>
+    </figure>
+
+    <pre>
+import os
+import time
+import warnings
+warnings.filterwarnings("ignore", message=".*Wayland.*window position.*")
+
+import numpy as np
+import mujoco
+import mujoco.viewer
+
+model = mujoco.MjModel.from_xml_path("cartpole.xml")
+data = mujoco.MjData(model)
+
+action_repeat = 10   # hold action for this many physics steps
+amp = 6.0            # force amplitude (N)
+freq = 0.5           # sinusoid frequency (Hz)
+physics_dt = model.opt.timestep
+control_dt = physics_dt * action_repeat
+
+state = {"mode": "script"}
+
+def key_callback(keycode):
+    if keycode == 82:   # R: reset
+        mujoco.mj_resetData(model, data)
+    elif keycode == 83: # S: script (sinusoid)
+        state["mode"] = "script"
+    elif keycode == 71:  # G: GUI (viewer sliders)
+        state["mode"] = "gui"
+
+def set_fixed_camera(viewer):
+    viewer.cam.type = mujoco.mjtCamera.mjCAMERA_FREE
+    viewer.cam.azimuth = 90.0   # side view so cart sliding is visible
+    viewer.cam.elevation = -15.0
+    viewer.cam.distance = 2.8
+    viewer.cam.lookat[:] = [0.0, 0.0, 0.4]
+
+with mujoco.viewer.launch_passive(model, data, key_callback=key_callback) as viewer:
+    set_fixed_camera(viewer)
+    step = 0
+    last_sync = time.perf_counter()
+    while viewer.is_running():
+        if state["mode"] == "script" and step % action_repeat == 0:
+            u = amp * np.sin(2 * np.pi * freq * data.time)
+            data.ctrl[0] = u
+        mujoco.mj_step(model, data)
+        viewer.sync()
+        set_fixed_camera(viewer)
+        step += 1
+        if step % action_repeat == 0:
+            elapsed = time.perf_counter() - last_sync
+            if elapsed &lt; control_dt:
+                time.sleep(control_dt - elapsed)
+            last_sync = time.perf_counter()
+    </pre>
+
+    <p>
+In the viewer: Press R to reset, S for sinusoid control, G to use the GUI actuator sliders.
+      The camera is fixed in a side view so the cart’s sliding is visible; the loop throttles so the sim runs at roughly real time.
+    </p>
+
+    <p>What to look for (your first screenshot checkpoint)</p>
+    <p>Example: initial load (no stepping) and normal sinusoid at default settings (<code>amp=6</code>, <code>action_repeat=10</code>):</p>
+    <figure>
+      <video src="mujoco_cartpole/results/training/videos/01_initial_load.mp4" poster="mujoco_cartpole/results/training/screenshots/01_initial_load.png" controls class="tutorial-screenshot" preload="metadata"></video>
+      <figcaption class="screenshot-caption">01 : Initial load (t=0) : video shows static scene</figcaption>
+    </figure>
+    <figure>
+      <video src="mujoco_cartpole/results/training/videos/03_sinusoid_normal.mp4" poster="mujoco_cartpole/results/training/screenshots/03_sinusoid_normal.png" controls class="tutorial-screenshot" preload="metadata"></video>
+      <figcaption class="screenshot-caption">03 : Normal sinusoid (amp=6, action_repeat=10) : play to see motion</figcaption>
+    </figure>
+    <ul class="list">
+      <li>Smooth motion: the cart should accelerate smoothly, not teleport or jitter.</li>
+      <li>Reasonable response: increasing <code>amp</code> should increase motion.</li>
+      <li>No exploding energy: the pole should not “shake itself to infinity”.</li>
+      <li>No jitter at rest: if you set <code>amp=0</code>, the system should not vibrate.</li>
+    </ul>
+
+    <p class="video-tip">
+      If the system looks unstable here, it will almost always fail in RL.
+      Fix physics and timing first.
+    </p>
+
+    <p>Linux Wayland: If you see a GLFW warning about “window position”, the viewer still works, the script suppresses it. To avoid it, run: <code>WAYLAND_DISPLAY= python open_loop.py</code>.</p>
+
+    <p>macOS note: On macOS, the MuJoCo passive viewer requires running with <code>mjpython</code> instead of <code>python</code>. Use: <code>mjpython open_loop.py</code>.</p>
+
+  </div>
+</div>
+
+
+<div class="step">
+  <div class="step-head">Step 2: Run Three Quick Open-Loop Experiments</div>
+  <div class="step-body">
+
+    <p>
+      Run these quick tests in order and watch what changes. <br/><br/> After making code changes, run <br/><br/>
+      <code>source .venv/bin/activate</code> in the terminal. <br/><br/>Then run <code>python open_loop.py</code> (on macOS, use <code>mjpython open_loop.py</code> instead).
+    </p>
+
+    <p>Experiment A: Zero Action Stability Test</p>
+    <p>
+     In <code>open_loop.py</code>, set <code>amp = 0.0</code> so the cart receives no force.
+      The pole should fall naturally due to gravity.
+      The motion should look physically plausible (no jitter, no energy explosion).
+    </p>
+    <figure>
+      <video src="mujoco_cartpole/results/training/videos/02_zero_action.mp4" poster="mujoco_cartpole/results/training/screenshots/02_zero_action.png" controls class="tutorial-screenshot" preload="metadata"></video>
+      <figcaption class="screenshot-caption">02 : Zero action (amp=0) : play to see pole fall</figcaption>
+    </figure>
+
+    <p>Experiment B: Control Frequency Test</p>
+    <p>
+      Change <code>action_repeat</code>:
+    </p>
+    <ul class="list">
+      <li><code>action_repeat = 1</code> (policy updates at physics rate)</li>
+      <li><code>action_repeat = 10</code> (50 Hz control if dt=0.002)</li>
+      <li><code>action_repeat = 25</code> (20 Hz control)</li>
+    </ul>
+
+    <p>
+      Observe how control “smoothness” changes:
+      large <code>action_repeat</code> can look jerky because the force is held constant longer.
+      This is one reason timing choices matter for learning.
+    </p>
+    <figure>
+      <video src="mujoco_cartpole/results/training/videos/04_control_fast.mp4" poster="mujoco_cartpole/results/training/screenshots/04_control_fast.png" controls class="tutorial-screenshot" preload="metadata"></video>
+      <figcaption class="screenshot-caption">04 : Control fast (action_repeat=1) : play to see motion</figcaption>
+    </figure>
+    <figure>
+      <video src="mujoco_cartpole/results/training/videos/05_control_slow.mp4" poster="mujoco_cartpole/results/training/screenshots/05_control_slow.png" controls class="tutorial-screenshot" preload="metadata"></video>
+      <figcaption class="screenshot-caption">05 : Control slow (action_repeat=25) : play to see motion</figcaption>
+    </figure>
+
+    <p>Experiment C: Force Scaling Test</p>
+    <p>
+      Change <code>amp</code>:
+    </p>
+    <ul class="list">
+      <li><code>amp = 2.0</code> (weak control authority)</li>
+      <li><code>amp = 6.0</code> (moderate)</li>
+      <li><code>amp = 12.0</code> (strong)</li>
+    </ul>
+
+    <p>
+      If <code>amp</code> is too small, the cart cannot move enough to influence the pole.
+      If <code>amp</code> is too large, the cart may slam into limits and create unrealistic motion.
+      Both cases can cause RL training to fail later.
+    </p>
+    <figure>
+      <video src="mujoco_cartpole/results/training/videos/06_force_weak.mp4" poster="mujoco_cartpole/results/training/screenshots/06_force_weak.png" controls class="tutorial-screenshot" preload="metadata"></video>
+      <figcaption class="screenshot-caption">06 : Force weak (amp=2) : play to see motion</figcaption>
+    </figure>
+    <figure>
+      <video src="mujoco_cartpole/results/training/videos/07_force_strong.mp4" poster="mujoco_cartpole/results/training/screenshots/07_force_strong.png" controls class="tutorial-screenshot" preload="metadata"></video>
+      <figcaption class="screenshot-caption">07 : Force strong (amp=12) : play to see motion</figcaption>
+    </figure>
+
+  </div>
+</div>
+
+
+<div class="step">
+  <div class="step-head">Step 3: Common Open-Loop Failure Patterns (What They Mean)</div>
+  <div class="step-body">
+
+    <ul class="list">
+      <li>
+Violent jitter at rest (amp=0):        timestep too large, missing damping, or unstable contacts/constraints.
+      </li>
+      <li>
+Cart barely moves even with large amp:        actuator not connected to the correct joint, or control limits too small.
+      </li>
+      <li>
+Cart instantly shoots away:        force scale too large, or control dt too large creating impulse-like behavior.
+      </li>
+      <li>
+Behavior changes dramatically with small dt changes:        physics is near instability; reduce dt and/or add damping.
+      </li>
+    </ul>
+
+    <p>
+      If any of these occur, fix environment physics/timing before moving forward.
+      Reinforcement learning will not “solve” unstable simulation.
+    </p>
+    <p>Example of an unstable case (large timestep <code>0.02</code>, high <code>amp</code> and <code>action_repeat</code>):</p>
+    <figure>
+      <video src="mujoco_cartpole/results/training/videos/08_unstable_case.mp4" poster="mujoco_cartpole/results/training/screenshots/08_unstable_case.png" controls class="tutorial-screenshot" preload="metadata"></video>
+      <figcaption class="screenshot-caption">08: Unstable case (timestep=0.02, amp=12, action_repeat=25) : play to see jitter/instability</figcaption>
+    </figure>
+
+  </div>
+</div>
+</div>
+</section>
+
+
+<section class="card" id="horizon">
+<div class="head">HORIZON & EPISODE LOGIC</div>
+<div class="body">
+
+<p>
+In reinforcement learning, an “episode” is a rollout of the environment for a fixed duration
+(or until failure). To set episode length correctly, you must connect:
+</p>
+
+<ul class="list">
+  <li>physics timestep (simulation dt)</li>
+  <li>control timestep (policy update rate)</li>
+  <li>horizon (episode duration in seconds)</li>
+</ul>
+
+<hr>
+
+<p>Example Values Used in This Tutorial</p>
+
+<ul class="list">
+  <li>Physics dt = 0.002 seconds (500 Hz simulation)</li>
+  <li>Action repeat = 10 steps</li>
+  <li>Control dt = 0.002 × 10 = 0.02 seconds (50 Hz control)</li>
+  <li>Episode horizon = 5 seconds</li>
+</ul>
+
+<p>How Many Steps Is That?</p>
+
+<ul class="list">
+  <li>Simulation steps per episode = 5 / 0.002 = 2500</li>
+  <li>Control decisions per episode = 2500 / 10 = 250</li>
+</ul>
+
+<p>
+Most RL algorithms count time in control decisions, not raw physics steps.
+So the policy will produce ~250 actions per 5-second episode (with these settings).
+</p>
+
+<hr>
+
+<p>Why Horizon Matters</p>
+
+<ul class="list">
+  <li>
+    If the horizon is too short, the agent can “look good” without learning stability.
+  </li>
+  <li>
+    If the horizon is too long, training becomes slower and credit assignment becomes harder.
+  </li>
+  <li>
+    Horizon should match the behavior you care about (e.g., balance for 5 seconds, walk for 10 seconds).
+  </li>
+</ul>
+
+<p>
+When configuring timesteps, make sure you know whether you're tuning physics steps or control decisions, the difference can be huge.
+</p>
+
+</div>
+</section>
+
+
+<section class="card" id="rl">
+<div class="head">SECTION D: BRIDGE TO RL</div>
+<div class="body">
+
+<p>
+Once open-loop looks good, we're ready for RL. Focus on training strategy first, not implementation details.
+</p>
+
+<p>
+Don't start with a complex reward. Use the simplest version that matches the behavior you want.
+</p>
+
+<hr>
+
+<p>What Gets Added When We Move From Open-Loop → RL</p>
+
+<ul class="list">
+  <li>Reset logic: define how the system starts each episode (initial state distribution)</li>
+  <li>Termination logic: define failure and time horizon formally</li>
+  <li>Reward function: define what is encouraged and discouraged</li>
+  <li>Policy update loop: PPO / SAC / etc.</li>
+</ul>
+
+<hr>
+
+<p>A Minimal Reward (Conceptual)</p>
+
+<p>
+A simple stabilization reward usually has three parts:
+</p>
+
+<ul class="list">
+  <li>Upright reward: encourage small pole angle (θ close to 0)</li>
+  <li>Stability / velocity penalty: discourage high angular velocity (θ̇)</li>
+  <li>Control cost: discourage excessive force (|u|)</li>
+</ul>
+
+<p>
+You don't need to tune constants perfectly at first. Just make sure the reward sign and scale are reasonable.
+</p>
+
+<hr>
+
+<p>Training Strategy</p>
+
+<ul class="list">
+  <li>Control frequency: choose a reasonable policy update rate (e.g., 50 Hz)</li>
+  <li>Episode horizon: choose a meaningful duration (e.g., 5 seconds)</li>
+  <li>Action limits: make sure actions are bounded and physically reasonable</li>
+  <li>Start simple: stabilize upright before adding extra objectives (e.g., center cart, energy efficiency)</li>
+</ul>
+
+<p>
+If training fails, don't reach for PPO hyperparameters first. Check physics, timing, and reward scale.
+</p>
+
+<p class="video-tip">
+In Part 2, we will cover training, monitoring, and systematic debugging.
+</p>
+</div>
+</section>
+
+
+<section class="card" id="debug">
+<div class="head">COMMON DEBUGGING CHECKLIST</div>
+<div class="body">
+
+<p>
+Use this checklist when training behaves oddly. Debug in order: Physics → Control → Reward → Optimization.
+</p>
+
+<ul class="list">
+  <li>Physics: With zero control, does the system behave plausibly (no jitter, no explosions)?</li>
+  <li>Control: Under open-loop signals, does increasing force increase response smoothly?</li>
+  <li>Timing: Is control dt reasonable (e.g., 20–100 Hz)? Does changing action_repeat change behavior as expected?</li>
+  <li>Reward: Is the reward positive when behavior is good and negative when behavior is bad? Is the scale reasonable?</li>
+  <li>Optimization: Only after the above: tune PPO/SAC hyperparameters.</li>
+</ul>
+</div>
+</section>
+
+<section class="card">
+<div class="head">NEXT: CART-POLE RL TUTORIAL</div>
+<div class="body">
+<p>Once MuJoCo and open-loop verification work, continue with the RL tutorial: environment setup, reward design, PPO training, and reward hacking demos.</p>
+<p><a href="mujoco_cartpole/training/tutorial.html">Open the CartPole RL tutorial →</a></p>
+</div>
+</section>
+
+</main>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,7 @@
+pole_angle_penalty
+balance
+upright
+center
+velocity_penalty
+control_penalty
+termination_penalty
